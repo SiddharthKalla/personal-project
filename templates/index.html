@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Be My Valentine?</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background-color: #ffe6f0;
+      margin-top: 100px;
+      overflow: hidden; /* helps hearts stay clean */
+    }
+
+    h1 {
+      color: #d63384;
+      font-size: 40px;
+    }
+
+    .btn-wrap {
+      position: relative;
+      width: 520px;
+      height: 120px;
+      margin: 30px auto 0 auto;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 20px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      position: absolute;
+      top: 25px;
+    }
+
+    #yesBtn {
+      left: 120px;
+      background-color: #28a745;
+      color: white;
+    }
+
+    #noBtn {
+      left: 300px;
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .message {
+      margin-top: 40px;
+      font-size: 24px;
+      color: #333;
+      min-height: 32px;
+    }
+
+    /* Hearts */
+    .heart {
+      position: fixed;
+      font-size: 24px;
+      pointer-events: none;
+      animation: floatUp 2.2s ease-in forwards;
+      opacity: 0.95;
+      z-index: 9999;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-220px) scale(1.6); opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Will You Be My Valentine? 💘</h1>
+
+  <!-- Keep your Flask forms if you want, but we’ll handle the fun in JS -->
+  <div class="btn-wrap" id="btnWrap">
+    <form id="yesForm" action="/answer" method="POST">
+      <input type="hidden" name="response" value="yes" />
+      <button id="yesBtn" type="submit">Yes 💖</button>
+    </form>
+
+    <form id="noForm" action="/answer" method="POST">
+      <input type="hidden" name="response" value="no" />
+      <button id="noBtn" type="submit">No 😢</button>
+    </form>
+  </div>
+
+  <div class="message" id="message">
+    {% if answer %}
+      {{ answer }}
+    {% endif %}
+  </div>
+
+  <script>
+    const yesForm = document.getElementById("yesForm");
+    const noForm = document.getElementById("noForm");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+    const btnWrap = document.getElementById("btnWrap");
+    const message = document.getElementById("message");
+
+    let heartsInterval = null;
+
+    // ---------- HEART CONFETTI ----------
+    function spawnHeart() {
+      const heart = document.createElement("div");
+      heart.className = "heart";
+      heart.textContent = "💖";
+
+      const x = Math.random() * window.innerWidth;
+      const y = window.innerHeight + 20; // start bottom
+
+      heart.style.left = `${x}px`;
+      heart.style.top = `${y}px`;
+      heart.style.fontSize = `${18 + Math.random() * 22}px`;
+      heart.style.transform = `rotate(${Math.random() * 60 - 30}deg)`;
+
+      document.body.appendChild(heart);
+
+      setTimeout(() => heart.remove(), 2300);
+    }
+
+    function startHearts() {
+      if (heartsInterval) return;
+      heartsInterval = setInterval(() => {
+        // spawn a small burst each tick
+        for (let i = 0; i < 6; i++) spawnHeart();
+      }, 180);
+
+      // auto-stop after a few seconds (optional)
+      setTimeout(() => {
+        clearInterval(heartsInterval);
+        heartsInterval = null;
+      }, 4500);
+    }
+
+    // ---------- NO BUTTON ESCAPE ----------
+    function moveNoButton() {
+      const wrapRect = btnWrap.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const maxLeft = wrapRect.width - btnRect.width;
+      const maxTop = wrapRect.height - btnRect.height;
+
+      const newLeft = Math.random() * Math.max(0, maxLeft);
+      const newTop = Math.random() * Math.max(0, maxTop);
+
+      noBtn.style.left = `${newLeft}px`;
+      noBtn.style.top = `${newTop}px`;
+    }
+
+    // Make No impossible 😈
+    noBtn.addEventListener("mouseenter", moveNoButton);
+    noBtn.addEventListener("mousedown", moveNoButton);
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      moveNoButton();
+    });
+
+    // ---------- YES CLICK ----------
+    // Option A: keep Flask POST (page reload) -> not ideal for animation
+    // We'll do Option B: prevent reload, show hearts + message instantly,
+    // and still POST in background to keep your Flask logic if you want.
+    yesForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      message.textContent = "YAYYYYY 💖 She said YES! Best Valentine ever!";
+      startHearts();
+
+      // OPTIONAL: still call your Flask /answer so backend stays consistent
+      try {
+        const formData = new FormData(yesForm);
+        await fetch("/answer", { method: "POST", body: formData });
+      } catch (_) {
+        // if fetch fails (rare), ignore—UI still works
+      }
+    });
+  </script>
+
+</body>
+</html>
